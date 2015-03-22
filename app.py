@@ -1,84 +1,81 @@
 #!venv/bin/python
 from flask import Flask, jsonify, abort, make_response, request, url_for
 from flask.ext.httpauth import HTTPBasicAuth
+from flask.ext.sqlalchemy import SQLAlchemy
+import time
+import datetime
+
 
 app = Flask(__name__)
+
 auth = HTTPBasicAuth()
 
-# need to add setup.py and unit tests
+ts = time.time()
 
 # datastore
-tasks = [
-  {
-    'id': 1,
-    'title': u'Buy groceries',
-    'description': u'Milk, Cheese, Pizza, Fruit, Tylenol',
-    'done': False
-  },
-  {
-    'id': 2,
-    'title': u'Learn Python',
-    'description': u'Need to find a good Python tutorial on the web',
-    'done': False
-  }
-]
+db = SQLAlchemy(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://test:pass@192.168.59.104:3306/store'
+
+# need to add setup.py and unit tests
 
 @app.route('/')
 def index():
   return "Flask API!" # should print out the endpoints to the user
 
-@app.route('/todo/api/v1.0/tasks', methods=['GET'])
+@app.route('/orders/api/v1.0/orders', methods=['GET'])
 @auth.login_required
-def get_tasks():
-  return jsonify({'tasks': [make_public_task(task) for task in tasks]})
+def get_orders():
+  return jsonify({'orders': [make_public_order(order) for order in orders]})
 
-@app.route('/todo/api/v1.0/task/<int:task_id>', methods=['GET'])
+@app.route('/orders/api/v1.0/order/<int:order_id>', methods=['GET'])
 @auth.login_required
-def get_task(task_id):
-  task = [task for task in tasks if task['id'] == task_id]
-  if len(task) == 0:
+def get_order(order_id):
+  order = [order for order in orders if order['id'] == order_id]
+  if len(order) == 0:
     abort(404)
-  return jsonify({'task': task[0]})
+  return jsonify({'order': order[0]})
 
-@app.route('/todo/api/v1.0/tasks', methods=['POST'])
+@app.route('/orders/api/v1.0/orders', methods=['POST'])
 @auth.login_required
-def create_task():
+def create_order():
   if not request.json or not 'title' in request.json:
     abort(400)
-  task = {
-    'id': tasks[-1]['id'] + 1,
-    'title': request.json['title'],
-    'description': request.json.get('description', ""),
-    'done': False
+  order = {
+    'id': orders[-1]['id'] + 1,
+    'date': datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'),
+    'customer_id': order[-1]['customer_id'] + 1,
+    'customer_name': request.json.get('customer_name', ""),
+    'customer_address': request.json.get('customer_name', "")
   }
-  tasks.append(task)
-  return jsonify({'task': make_public_task(task)}), 201
+  orders.append(order)
+  return jsonify({'order': make_public_order(order)}), 201
 
-@app.route('/todo/api/v1.0/task/<int:task_id>', methods=['PUT'])
+@app.route('/orders/api/v1.0/order/<int:order_id>', methods=['PUT'])
 @auth.login_required
-def update_task(task_id):
-  if not request.json or not task_id:
+def update_order(order_id):
+  if not request.json or not order_id:
     abort(400)
-  for task in (t for t in tasks if t['id'] == task_id):
-    task['title'] = request.json.get('title', task['title'])
-    task['description'] = request.json.get('description', task['description'])
-    return jsonify({'task': make_public_task(task)})
+  for order in (t for t in orders if t['id'] == order_id):
+    order['customer_id'] = request.json.get('customer_id', order['customer_id'])
+    order['customer_name'] = request.json.get('customer_name', order['customer_name'])
+    order['customer_address'] = request.json.get('customer_address', order['customer_address'])
+    return jsonify({'order': make_public_order(order)})
   abort(404)
 
-def make_public_task(task):
-  new_task = {}
-  for field in task:
+def make_public_order(order):
+  new_order = {}
+  for field in order:
     if field == 'id':
-      new_task['uri'] = url_for('get_task', task_id = task['id'], _external = True)
+      new_order['uri'] = url_for('get_order', order_id = order['id'], _external = True)
     else:
-      new_task[field] = task[field]
-  return new_task
+      new_order[field] = order[field]
+  return new_order
 
 # authentication
 @auth.get_password
 def get_password(username):
   if username == 'test':
-    return 'password'
+    return 'pass'
   return None
 
 # error handling
