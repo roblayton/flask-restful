@@ -1,22 +1,33 @@
 #!venv/bin/python
 from flask import Flask, jsonify, abort, make_response, request, url_for
 from flask.ext.httpauth import HTTPBasicAuth
-from flask.ext.sqlalchemy import SQLAlchemy
 import time
 import datetime
 
 
 app = Flask(__name__)
-
 auth = HTTPBasicAuth()
-
 ts = time.time()
 
-# datastore
-db = SQLAlchemy(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://test:pass@192.168.59.104:3306/store'
-
 # need to add setup.py and unit tests
+
+# datastore
+orders = [
+  {
+    'id': 44029472,
+    'date': u'',
+    'customer_id': 220300,
+    'customer_name': u'David',
+    'customer_address': u'Anchorage, Alaska'
+  },
+  {
+    'id': 440929472,
+    'date': u'',
+    'customer_id': 220300,
+    'customer_name': u'Jack',
+    'customer_address': u'New York, New York'
+  },
+]
 
 @app.route('/')
 def index():
@@ -58,7 +69,7 @@ def update_order(order_id):
   for order in (t for t in orders if t['id'] == order_id):
     order['customer_id'] = request.json.get('customer_id', order['customer_id'])
     order['customer_name'] = request.json.get('customer_name', order['customer_name'])
-    order['customer_address'] = request.json.get('customer_address', order['customer_address'])
+    order['customer_address'] = request.json.get('description', order['customer_address'])
     return jsonify({'order': make_public_order(order)})
   abort(404)
 
@@ -75,7 +86,7 @@ def make_public_order(order):
 @auth.get_password
 def get_password(username):
   if username == 'test':
-    return 'pass'
+    return 'password'
   return None
 
 # error handling
